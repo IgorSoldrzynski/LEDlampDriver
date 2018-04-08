@@ -1,0 +1,7 @@
+*Przepisać "Godzina szczytu na 5 min." tak, aby obliczenia były wykonywanie po stronie aplikacji (oszczędność pamięci arduino). Na bazie tej funcji (arduino) napisać też demo doby (przebieg doby w krótszym czasie.
+
+*W aplikacji dopisać (wielowątkowo) wyświetlanie obecnej godziny i mocy kanałów.
+
+*W aplikacji dodać możliwość edycji pinu kanału.
+
+*W aplikacji dodać znaki +- obok pól wprowadzania wartości. Ograniczyć możliwy zakres wprowadzonych wartości. Dopisać zaokrąglanie do określonej liczby znaków.
