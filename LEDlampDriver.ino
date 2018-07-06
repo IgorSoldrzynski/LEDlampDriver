@@ -29,7 +29,7 @@ const float gStopUv = 21.5;
 //Ustawienie numerów pinów PWM:
 const int pinWhite = 5;
 const int pinBlue = 3;
-const int pinUv = 6;
+const int pinUv = 9;
 
 
 //----------------------------------------KLASA KanalLED---------------------------
