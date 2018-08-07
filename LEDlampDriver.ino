@@ -12,19 +12,19 @@ RTC_DS3231 rtc;
 
 
 //Moce kanałów:
-const float maxWhite = 0.82;
-const float maxBlue = 0.85;
-const float maxUv = 0.9;
+const float maxWhite = 0.95;
+const float maxBlue = 0.80;
+const float maxUv = 0.90;
 
 //Godziny start (dziesiętnie):
 const float gStartWhite = 9.5;
-const float gStartBlue = 8.8;
+const float gStartBlue = 9.0;
 const float gStartUv = 8.5;
 
 //Godziny stop (dziesiętnie):
-const float gStopWhite = 20.5;
-const float gStopBlue = 21.2;
-const float gStopUv = 21.5;
+const float gStopWhite = 19.5;
+const float gStopBlue = 21.5;
+const float gStopUv = 20.5;
 
 //Ustawienie numerów pinów PWM:
 const int pinWhite = 5;
