@@ -6,11 +6,13 @@ RTC_DS3231 rtc;
  * STEROWNIK LAMPY LEDOWEJ
  * autor: Igor Sołdrzyński
  * igor.soldrzynski@gmail.com
- * Użycie całości lub fragmentu kodu za zgodą autora.
+ * Użycie całości lub fragmentu kodu tylko za zgodą autora.
  * biblioteka RTClib https://github.com/adafruit/RTClib 
  */
 
-
+// D10 - czujnik temp
+//D2 - czujnik poziomu
+//D6-7 diody
 //Moce kanałów:
 const float maxWhite = 0.95;
 const float maxBlue = 0.80;
