@@ -1,7 +1,10 @@
 #include <Wire.h>
 #include <RTClib.h>
 #include <EEPROM.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
 RTC_DS3231 rtc;
+
 /*
  * STEROWNIK LAMPY LEDOWEJ
  * autor: Igor Sołdrzyński
@@ -10,9 +13,6 @@ RTC_DS3231 rtc;
  * biblioteka RTClib https://github.com/adafruit/RTClib 
  */
 
-// D10 - czujnik temp
-//D2 - czujnik poziomu
-//D6-7 diody
 //Moce kanałów:
 const float maxWhite = 0.95;
 const float maxBlue = 0.80;
@@ -32,6 +32,27 @@ const float gStopUv = 20.5;
 const int pinWhite = 5;
 const int pinBlue = 3;
 const int pinUv = 9;
+//zamienić na typ byte...
+
+//Piny czujników i wyjść:
+const byte pinTemSens = 10;
+const byte pinWtLv = 2;
+const byte pinOutWent = 6;
+const byte pinOutHeat = 7;
+const byte pinOutPump = 8;
+
+//Obiekty niezbędna do połączenia z termometrem DS18B20:
+OneWire bus(pinTemSens);
+DallasTemperature sensors(&bus);
+DeviceAddress sensor;
+
+//Ustawienia zadanej temperatury:
+const float tarTemp = 25.0;
+const float flucTemp = 0.5;
+
+//poprzednie godzinoMinuta do odstępów między pomiarami:
+float pGodzinoMinuta = 0.0;
+float p2GodzinoMinuta = 0.0;
 
 
 //----------------------------------------KLASA KanalLED---------------------------
@@ -116,7 +137,6 @@ void KanalLED::setGstart(float newGstart){ _gStart = newGstart; }
 void KanalLED::setGstop(float newGstop){ _gStop = newGstop; }
 //---------------------------------------Setery koniec-----------------------------
 
-
 //---------------------------------------Getery------------------------------------
 //metoda ustawiająca nr pin kanału
 int KanalLED::getPin(){ return _pin; }
@@ -146,8 +166,16 @@ void setup()
   // rtc.adjust(DateTime(F(__DATE__), F(__TIME__))); //systemowy
   // rtc.adjust(DateTime(2017, 12, 13, 13, 14, 0)); //lub ręcznie ustawiony
 
-  //powitanie
-  //Serial.println("STEROWNIK LAMPY LEDOWEJ \nautor: Igor Sołdrzyński");
+  // Start sensora temperatury DS18B20:
+  sensors.begin();
+
+  // Ustawienie pinów wyjścia:
+  pinMode(pinOutHeat, OUTPUT);
+  pinMode(pinOutWent, OUTPUT);
+  pinMode(pinOutPump, OUTPUT);
+  digitalWrite(pinOutHeat, LOW);
+  digitalWrite(pinOutWent, LOW);
+  digitalWrite(pinOutPump, LOW);
 
   //przywrócenie zapisanych ustawień w EEPROM
   if(EEPROM.read(0) != 0)
@@ -157,6 +185,7 @@ void setup()
     EEPROM.get(sizeof(white)+sizeof(blue), uv);
   }
 }
+
 
 //główna pętla
 void loop()
@@ -204,6 +233,22 @@ void loop()
     }
   }
 
+  //sprawdzanie poziomu wody co godzinę:
+  if((godzinoMinuta - pGodzinoMinuta) > 1.0)
+  {
+    //sprawdzenie poziomu wody i uruchomienie pompy w razie potrzeby:
+    ato();
+    pGodzinoMinuta = godzinoMinuta;
+  }
+  
+  //sprawdzenie temperatury co 3 minuty:
+  if((godzinoMinuta - p2GodzinoMinuta) > 0.05)
+  {
+    //sprawdzenie temperatury i ustawienie grzania/chłodzenia:
+    tempControl(curTemp());
+    p2GodzinoMinuta = godzinoMinuta;
+  }
+  
   delay(50);
 }
 
@@ -311,4 +356,44 @@ String liczbaZnakowFloatToString(float przecinkowa, int znakow)
     }
   }
   return wynik;
+}
+
+//funkcja zwracająca aktualną temperaturę:
+float curTemp()
+{
+  sensors.requestTemperatures();
+  return(sensors.getTempC(sensor));
+}
+
+//funckja załączająca grzanie/chłodzenie w razie potrzeby:
+void tempControl(float temp)
+{
+  if(temp < (tarTemp - flucTemp))
+  {
+    digitalWrite(pinOutHeat, HIGH);
+    digitalWrite(pinOutWent, LOW);
+  }
+  else if(temp > (tarTemp + flucTemp))
+  {
+    digitalWrite(pinOutHeat, LOW);
+    digitalWrite(pinOutWent, HIGH);
+  }
+  else
+  {
+    digitalWrite(pinOutHeat, LOW);
+    digitalWrite(pinOutWent, LOW);
+  }
+}
+
+//funkcja włączająca pompę dolewki w razie potrzeby:
+void ato()
+{
+  if(digitalRead(pinWtLv))
+  {
+    digitalWrite(pinOutPump, HIGH);
+  }
+  else
+  {
+    digitalWrite(pinOutPump, LOW);
+  }
 }
