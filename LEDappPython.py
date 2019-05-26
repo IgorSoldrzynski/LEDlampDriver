@@ -20,7 +20,6 @@ __email__ = "igor.soldrzynski@gmail.com"
 __status__ = "Beta"
 
 
-### dopisać wyświetlanie akrualnych wartości wielowątkowo #########################
 
 #obiekty globalne
 okno = Tk()
@@ -103,7 +102,7 @@ def rysujOkno():
 	Label(okno, text="Port Arduino:").grid(row=wiersz, column=1, sticky=E)
 	polePort = Entry(okno)
 	polePort.grid(row=wiersz, column=2)
-	polePort.insert(0,"/dev/ttyUSB0")
+	polePort.insert(0,"/dev/rfcomm0")
 	Button(okno, text='Połącz', command=lambda: polacz(polePort.get())).grid(row=wiersz, column=3, sticky=W)
 	wiersz+=1
 
