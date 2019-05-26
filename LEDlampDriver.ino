@@ -3,8 +3,7 @@
 #include <EEPROM.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
-RTC_DS3231 rtc;
-
+#include <SoftwareSerial.h>
 /*
  * STEROWNIK LAMPY LEDOWEJ
  * autor: Igor Sołdrzyński
@@ -29,22 +28,27 @@ const float gStopBlue = 21.5;
 const float gStopUv = 20.5;
 
 //Ustawienie numerów pinów PWM:
-const int pinWhite = 5;
+const int pinWhite = 9;
 const int pinBlue = 3;
-const int pinUv = 9;
+const int pinUv = 5;
 //zamienić na typ byte...
 
 //Piny czujników i wyjść:
 const byte pinTemSens = 10;
 const byte pinWtLv = 2;
-const byte pinOutWent = 6;
-const byte pinOutHeat = 7;
-const byte pinOutPump = 8;
+const byte pinOutWent = 12;
+const byte pinOutHeat = 13; 
+const byte pinOutPump = 6;
+//dodatkowa dioda (wolna) pin 7
 
-//Obiekty niezbędna do połączenia z termometrem DS18B20:
+//Piny softwareserial (bluetooth) - A0, A1
+SoftwareSerial softSerial(A0, A1);
+
+//Obiekty niezbędna do połączenia z termometrem DS18B20 oraz zegarem RTC:
 OneWire bus(pinTemSens);
 DallasTemperature sensors(&bus);
 DeviceAddress sensor;
+RTC_DS3231 rtc;
 
 //Ustawienia zadanej temperatury:
 const float tarTemp = 25.0;
@@ -157,9 +161,11 @@ KanalLED blue(pinBlue, gStartBlue, gStopBlue, maxBlue);
 KanalLED uv(pinUv, gStartUv, gStopUv, maxUv);
 
 
+//--------------------------------------- SETUP ------------------------------------
 void setup()
 {
   Serial.begin(9600);
+  softSerial.begin(9600);
   rtc.begin();
   // Ustawienie czasu w zegarze. Po ustawieniu zakomentować poniższe linie kodu i wgrać program jeszcze raz!
   // Należy ustawiać czas letni!
@@ -168,8 +174,10 @@ void setup()
 
   // Start sensora temperatury DS18B20:
   sensors.begin();
+  sensors.getAddress(sensor, 0);
 
-  // Ustawienie pinów wyjścia:
+  // Ustawienie pinów wyjścia/wejścia:
+  pinMode(pinWtLv, INPUT_PULLUP);
   pinMode(pinOutHeat, OUTPUT);
   pinMode(pinOutWent, OUTPUT);
   pinMode(pinOutPump, OUTPUT);
@@ -187,7 +195,7 @@ void setup()
 }
 
 
-//główna pętla
+//--------------------------------------- LOOP --------------------------------------
 void loop()
 {
   //--------------------------------Godzinominuta obliczanie-------------------------
@@ -207,9 +215,9 @@ void loop()
 
   //sprawdzenie i obsługa żądań aplikacji zewnętrznej
   String zadanie;
-  while(Serial.available()) 
+  while(softSerial.available()) 
   {
-    zadanie = Serial.readString(); //odebrany ciąg
+    zadanie = softSerial.readString(); //odebrany ciąg
 
     //obsługa wysyłania ustawień
     if(zadanie.startsWith("pobierz"))
@@ -234,21 +242,21 @@ void loop()
   }
 
   //sprawdzanie poziomu wody co godzinę:
-  if((godzinoMinuta - pGodzinoMinuta) > 1.0)
-  {
+  //if((godzinoMinuta - pGodzinoMinuta) > 1.0)
+  //{
     //sprawdzenie poziomu wody i uruchomienie pompy w razie potrzeby:
     ato();
-    pGodzinoMinuta = godzinoMinuta;
-  }
+    //pGodzinoMinuta = godzinoMinuta;
+  //}
   
   //sprawdzenie temperatury co 3 minuty:
-  if((godzinoMinuta - p2GodzinoMinuta) > 0.05)
-  {
+  //if((godzinoMinuta - p2GodzinoMinuta) > 0.05)
+  //{
     //sprawdzenie temperatury i ustawienie grzania/chłodzenia:
     tempControl(curTemp());
-    p2GodzinoMinuta = godzinoMinuta;
-  }
-  
+    //p2GodzinoMinuta = godzinoMinuta;
+  //}
+
   delay(50);
 }
 
@@ -266,7 +274,7 @@ void wyslijUstawienia()
     liczbaZnakowFloatToString(white.getGstop(),4) +";"+ 
     liczbaZnakowFloatToString(blue.getGstop(),4) +";"+
     liczbaZnakowFloatToString(uv.getGstop(),4) +";";
-  Serial.println(ustawienia);
+  softSerial.println(ustawienia);
 }
 
 
@@ -333,7 +341,7 @@ void godzinaSzczytu()
   while(millis() - czas < 5*60*1000)
   {
      delay(50);
-     if(Serial.readString() != 'szczyt')
+     if(softSerial.readString() != 'szczyt')
       break;
   }
 }
@@ -388,7 +396,7 @@ void tempControl(float temp)
 //funkcja włączająca pompę dolewki w razie potrzeby:
 void ato()
 {
-  if(digitalRead(pinWtLv))
+  if(!digitalRead(pinWtLv))
   {
     digitalWrite(pinOutPump, HIGH);
   }
