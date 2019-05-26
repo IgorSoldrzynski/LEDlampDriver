@@ -36,10 +36,10 @@ const int pinUv = 5;
 //Piny czujników i wyjść:
 const byte pinTemSens = 10;
 const byte pinWtLv = 2;
-const byte pinOutWent = 12;
-const byte pinOutHeat = 13; 
-const byte pinOutPump = 6;
-//dodatkowa dioda (wolna) pin 7
+const byte pinOutWent = 13;
+const byte pinOutHeat = 12; 
+const byte pinOutPump = 7;
+//dodatkowa dioda (wolna) pin 6
 
 //Piny softwareserial (bluetooth) - A0, A1
 SoftwareSerial softSerial(A0, A1);
@@ -54,8 +54,13 @@ RTC_DS3231 rtc;
 const float tarTemp = 25.0;
 const float flucTemp = 0.5;
 
+//Pomiary ATO:
+const byte nMeasMax = 3; //liczba pomiarów upewniających się o stanie
+byte numMeas = nMeasMax;
+byte curSecFi = 0;
+boolean lastMeas = 0;
+
 //poprzednie godzinoMinuta do odstępów między pomiarami:
-float pGodzinoMinuta = 0.0;
 float p2GodzinoMinuta = 0.0;
 
 
@@ -241,13 +246,10 @@ void loop()
     }
   }
 
-  //sprawdzanie poziomu wody co godzinę:
-  //if((godzinoMinuta - pGodzinoMinuta) > 1.0)
-  //{
-    //sprawdzenie poziomu wody i uruchomienie pompy w razie potrzeby:
-    ato();
-    //pGodzinoMinuta = godzinoMinuta;
-  //}
+
+  //sprawdzenie poziomu wody i uruchomienie pompy w razie potrzeby:
+  ato(zegar.second());
+
   
   //sprawdzenie temperatury co 3 minuty:
   //if((godzinoMinuta - p2GodzinoMinuta) > 0.05)
@@ -341,8 +343,11 @@ void godzinaSzczytu()
   while(millis() - czas < 5*60*1000)
   {
      delay(50);
-     if(softSerial.readString() != 'szczyt')
+     if(softSerial.readString().startsWith("szczyt"))
+     {
+      delay(100);
       break;
+     }
   }
 }
 
@@ -394,14 +399,31 @@ void tempControl(float temp)
 }
 
 //funkcja włączająca pompę dolewki w razie potrzeby:
-void ato()
+void ato(byte curSec)
 {
-  if(!digitalRead(pinWtLv))
+  if(curSecFi != curSec)
   {
-    digitalWrite(pinOutPump, HIGH);
-  }
-  else
-  {
-    digitalWrite(pinOutPump, LOW);
+    curSecFi = curSec;
+    if(lastMeas != digitalRead(pinWtLv))
+    {
+      lastMeas = digitalRead(pinWtLv);
+      numMeas = nMeasMax;
+    }
+    numMeas -= 1;
+
+    if(numMeas == 0)
+    {
+      if(lastMeas)
+      {
+        digitalWrite(pinOutPump, LOW);
+        Serial.println("ATO PUMP OFF");
+      }
+      else
+      {
+        digitalWrite(pinOutPump, HIGH);
+        Serial.println("ATO PUMP ON");
+      }
+      numMeas = nMeasMax;
+    }
   }
 }
